@@ -1,4 +1,8 @@
 import asyncio
+
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+
 import config
 from aiogram import Bot, Dispatcher
 from aiogram.filters.command import Command, Message
@@ -7,7 +11,12 @@ from handlers import handlers_for_students, handlers_for_teacher, handlers_for_u
 from keyboards.keyboards_for_unauthorized_user import get_start_keyboard
 
 # Объект бота
-bot = Bot(token=config.TOKEN)
+bot = Bot(
+    token=config.TOKEN,
+    default=DefaultBotProperties(
+        parse_mode=ParseMode.HTML
+    )
+)
 # Диспетчер
 dp = Dispatcher()
 
@@ -24,8 +33,8 @@ async def main():
 
 
 @dp.message(Command("start"))
-async def cmd_start(message: Message):
-    await message.answer(f"Привет!\nЯ помощник для организации учебы",
+async def cmd_start(message: Message, bot: Bot):
+    await bot.send_message(chat_id=message.chat.id, text="Привет!\nЯ помощник для организации учебы",
                          reply_markup=get_start_keyboard())
 
 

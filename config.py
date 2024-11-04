@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 TOKEN = "7780095839:AAEratOX7pHOVUwjp2n0FtVeJKx2g76YGts"
 
 DATABASE_CONFIG = {
-    "dbname": 'tgbot_for_study',
+    "database": 'tgbot_for_study',
     "user": 'postgres',
     "password": 'Timuraka47',
     "host": 'localhost',

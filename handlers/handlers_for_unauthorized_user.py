@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot import cmd_start
+from keyboards.keyboards_for_student import get_interface_for_student
 from utils import states
 from database.methods import db
 
@@ -27,7 +28,7 @@ async def enter_password(message: types.Message, state: FSMContext):
 async def authorization(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     res = await db.find_user(user_data["login"], message.text)
-    if res["status"] == "User not found":
+    if res['status'] == "User not found":
         await message.answer("Неверный логин или пароль\nПопробуйте еще раз")
         await state.set_state(None)
 
@@ -41,8 +42,13 @@ async def authorization(message: types.Message, state: FSMContext):
 
         await enter_login(fake_callback, state)
     else:
-        await state.set_state(None)
-        await message.answer(f"С возвращением, {res['name']}")
+        if res['status'] == "teacher":
+            await state.set_state(states.UserStatus.teacher)
+        else:
+            await state.set_state(states.UserStatus.student)
+
+        await state.update_data(user_id=res['user_id'])
+        await message.answer(f"С возвращением, {res['name']}", reply_markup=get_interface_for_student())
 
 
 @router.message()
