@@ -33,3 +33,15 @@ async def show_schedule(callback: types.CallbackQuery, state: FSMContext):
     else:
         await callback.message.answer(f"У вас нет запланированных занятий")
 
+
+@router.callback_query(F.data == "show hw")
+async def show_hw(callback: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    res = await db.get_homework(user_data["user_id"])
+    if res:
+        for hw in res:
+            await callback.message.answer(f"<b>Тема:</b> {hw['topic']}\n"
+                                          f"<b>Ссылка на дз:</b> {hw['reference']}\n"
+                                          f"<b>Дедлайн:</b> {hw['deadline']}\n")
+    else:
+        await callback.message.answer(f"У вас нет домашнего задания.\nМожете отдыхать!")

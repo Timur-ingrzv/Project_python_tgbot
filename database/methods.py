@@ -12,6 +12,7 @@ class Database:
         self.db_config = DATABASE_CONFIG
         self.users = Table("users")
         self.schedule = Table("schedule")
+        self.hw = Table("homework")
 
     async def find_user(self, login: str, password: str) -> Dict:
         connection = await asyncpg.connect(**self.db_config)
@@ -35,7 +36,7 @@ class Database:
             # Закрытие соединения
             await connection.close()
 
-    async def get_future_events(self, user_id: int):
+    async def get_future_events(self, user_id: int) -> tuple[Dict]:
         now = datetime.now()
         connection = await asyncpg.connect(**self.db_config)
         try:
@@ -45,6 +46,20 @@ class Database:
                 .on(self.users.user_id == self.schedule.teacher_id)
                 .select(self.users.name, self.schedule.date, self.schedule.topic)
                 .where(self.schedule.date > now).where(self.schedule.student_id == user_id)
+            )
+            res = await connection.fetch(str(query))
+            return res
+        finally:
+            await connection.close()
+
+    async def get_homework(self, user_id: int) -> tuple[Dict]:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.hw)
+                .select(self.hw.topic, self.hw.reference, self.hw.deadline)
+                .where(self.hw.status == "not done")
+                .where(self.hw.student_id == user_id)
             )
             res = await connection.fetch(str(query))
             return res
