@@ -8,3 +8,7 @@ class Registration(StatesGroup):
 class UserStatus(StatesGroup):
     student = State()
     teacher = State()
+
+class SendingHw(StatesGroup):
+    waiting_for_link = State()
+    waiting_for_file = State()
