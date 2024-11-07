@@ -66,4 +66,34 @@ class Database:
         finally:
             await connection.close()
 
+    async def get_name(self, user_id: int) -> str:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.users)
+                .select(self.users.name)
+                .where(self.users.user_id == user_id)
+            )
+            res = await connection.fetch(str(query))
+            return res[0]["name"]
+        finally:
+            await connection.close()
+
+    async def check_ref_hw(self, user_id: int, ref: str) -> bool:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.hw)
+                .select(self.hw.hw_id)
+                .where(self.hw.reference == ref)
+                .where(self.hw.student_id == user_id)
+                .where(self.hw.status != "deadline")
+            )
+            res = await connection.fetch(str(query))
+            return bool(res)
+        finally:
+            await connection.close()
+
+
 db = Database()
+print(asyncio.run(db.check_ref_hw(1, "test_reference")))
