@@ -1,6 +1,5 @@
 import aiohttp
 from aiogram import F, Router, types
-from aiogram.enums import ContentType
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 
@@ -76,8 +75,11 @@ async def send_hw(message: types.Message, state: FSMContext):
     await state.set_state(UserStatus.student)
     user_data = await state.get_data()
     # проверка формата файла и существование ссылки на дз
-    if message.document and message.document.mime_type == "application/pdf" and db.check_ref_hw(user_data["user_id"],
-                                                                                                user_data["link"]):
+    if (
+        message.document
+        and message.document.mime_type == "application/pdf"
+        and db.check_ref_hw(user_data["user_id"], user_data["link"])
+    ):
         from bot import bot
         from config import TOKEN
 
@@ -86,21 +88,29 @@ async def send_hw(message: types.Message, state: FSMContext):
 
         # получаем файл
         file_info = await bot.get_file(file_id)
-        file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
+        file_url = (
+            f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
+        )
 
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(ssl=False)
+        ) as session:
             async with session.get(file_url) as file_response:
                 # проверяем статус запроса
                 if file_response.status == 200:
                     file_data = await file_response.read()
-                    student_name = db.get_name(user_data["user_id"])
+                    student_name = await db.get_name(user_data["user_id"])
                     # загружаем файл на яндекс диск
-                    result = await upload_to_yandex_disk(file_data, file_name, student_name)
+                    result = await upload_to_yandex_disk(
+                        file_data, file_name, student_name
+                    )
 
                     await message.answer(f"{result}")
                 else:
-                    await message.answer("Не удалось загрузить файл из Telegram\n"
-                                        "Попробуйте повторить позже")
+                    await message.answer(
+                        "Не удалось загрузить файл из Telegram\n"
+                        "Попробуйте повторить позже"
+                    )
 
     else:
         await message.answer(

@@ -1,7 +1,6 @@
 from aiogram import F, Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
 
 from keyboards.keyboards_for_student import get_interface_for_student
 from utils import states
@@ -39,10 +38,12 @@ async def authorization(message: types.Message, state: FSMContext):
             chat_instance=str(message.chat.id),
         )
 
+        # просим заново ввести логин
         await enter_login(fake_callback, state)
     else:
         await state.clear()
 
+        # ставим статус пользователя
         if res["status"] == "teacher":
             await state.set_state(states.UserStatus.teacher)
         else:
@@ -50,7 +51,8 @@ async def authorization(message: types.Message, state: FSMContext):
 
         await state.update_data(user_id=res["user_id"])
         await message.answer(
-            f"С возвращением, {res['name']}", reply_markup=get_interface_for_student()
+            f"С возвращением, {res['name']}",
+            reply_markup=get_interface_for_student(),
         )
 
 

@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from typing import Dict
 
@@ -21,7 +20,10 @@ class Database:
             query = (
                 Query.from_(self.users)
                 .select(self.users.user_id, self.users.name, self.users.status)
-                .where((self.users.login == login) & (self.users.password == password))
+                .where(
+                    (self.users.login == login)
+                    & (self.users.password == password)
+                )
             )
 
             # Получение одной строки
@@ -31,7 +33,11 @@ class Database:
             if not res:
                 return {"status": "User not found"}
             else:
-                return {"user_id": res["user_id"], "name": res["name"], "status": res["status"]}
+                return {
+                    "user_id": res["user_id"],
+                    "name": res["name"],
+                    "status": res["status"],
+                }
         finally:
             # Закрытие соединения
             await connection.close()
@@ -44,8 +50,11 @@ class Database:
                 Query.from_(self.schedule)
                 .join(self.users)
                 .on(self.users.user_id == self.schedule.teacher_id)
-                .select(self.users.name, self.schedule.date, self.schedule.topic)
-                .where(self.schedule.date > now).where(self.schedule.student_id == user_id)
+                .select(
+                    self.users.name, self.schedule.date, self.schedule.topic
+                )
+                .where(self.schedule.date > now)
+                .where(self.schedule.student_id == user_id)
             )
             res = await connection.fetch(str(query))
             return res
@@ -96,4 +105,3 @@ class Database:
 
 
 db = Database()
-print(asyncio.run(db.check_ref_hw(1, "test_reference")))
