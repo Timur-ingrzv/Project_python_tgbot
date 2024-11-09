@@ -1,15 +1,20 @@
 import logging
-
+from dotenv import load_dotenv
+import os
 
 # Включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
 
-TOKEN = "7780095839:AAEratOX7pHOVUwjp2n0FtVeJKx2g76YGts"
+load_dotenv()
+TOKEN = str(os.getenv('BOT_TOKEN'))
+PASSWORD_DB = str(os.getenv('PASSWORD_DB'))
+TOKEN_YANDEX = str(os.getenv(''))
+
 
 DATABASE_CONFIG = {
     "database": "tgbot_for_study",
     "user": "postgres",
-    "password": "Timuraka47",
+    "password": PASSWORD_DB,
     "host": "localhost",
     "port": "5432",
 }
