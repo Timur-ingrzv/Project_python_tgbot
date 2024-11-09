@@ -16,7 +16,7 @@ from keyboards.keyboards_for_unauthorized_user import get_start_keyboard
 
 # Объект бота
 bot = Bot(
-    token=config.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 # Диспетчер
 dp = Dispatcher()

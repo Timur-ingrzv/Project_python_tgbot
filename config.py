@@ -6,9 +6,9 @@ import os
 logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
-TOKEN = str(os.getenv('BOT_TOKEN'))
+BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
 PASSWORD_DB = str(os.getenv('PASSWORD_DB'))
-TOKEN_YANDEX = str(os.getenv(''))
+YANDEX_TOKEN = str(os.getenv('YANDEX_TOKEN'))
 
 
 DATABASE_CONFIG = {

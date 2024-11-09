@@ -78,10 +78,10 @@ async def send_hw(message: types.Message, state: FSMContext):
     if (
         message.document
         and message.document.mime_type == "application/pdf"
-        and db.check_ref_hw(user_data["user_id"], user_data["link"])
+        and await db.check_ref_hw(user_data["user_id"], user_data["link"])
     ):
         from bot import bot
-        from config import TOKEN
+        from config import BOT_TOKEN
 
         file_id = message.document.file_id
         file_name = message.document.file_name
@@ -89,7 +89,7 @@ async def send_hw(message: types.Message, state: FSMContext):
         # получаем файл
         file_info = await bot.get_file(file_id)
         file_url = (
-            f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
+            f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
         )
 
         async with aiohttp.ClientSession(

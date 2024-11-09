@@ -1,10 +1,10 @@
 import aiohttp
-from config import TOKEN_YANDEX
+from config import YANDEX_TOKEN
 
 
 async def upload_to_yandex_disk(file_data, file_name, student_name) -> str:
     url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
-    headers = {"Authorization": f"OAuth {TOKEN_YANDEX}"}
+    headers = {"Authorization": f"OAuth {YANDEX_TOKEN}"}
     params = {"path": f"/ДЗ/{student_name}/{file_name}", "overwrite": "true"}
 
     async with aiohttp.ClientSession(
