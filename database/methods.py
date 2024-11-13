@@ -102,7 +102,7 @@ class MethodsForStudent:
                 .select(self.hw.hw_id)
                 .where(self.hw.reference == ref)
                 .where(self.hw.student_id == user_id)
-                .where(self.hw.status != "Deadline")
+                .where(self.hw.status != "deadline")
             )
             res = await connection.fetch(str(query))
             return bool(res)
@@ -114,7 +114,7 @@ class MethodsForStudent:
         try:
             query = (
                 Query.update(self.hw)
-                .set(self.hw.status, "Done")
+                .set(self.hw.status, "done")
                 .where(self.hw.reference == hw_reference)
                 .where(self.hw.student_id == student_id)
             )
@@ -148,6 +148,18 @@ class MethodsForTeacher:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
+
+    async def get_user_id(self, name: str):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.users)
+                .select(self.users.user_id)
+                .where(self.users.name == name)
+            )
+            return await connection.fetchrow(str(query))
+        finally:
+            await connection.close()
 
     async def add_user(self, info: Dict) -> str:
         connection = await asyncpg.connect(**self.db_config)
@@ -214,6 +226,84 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query))
             return "Пользователь успешно удален"
+        finally:
+            await connection.close()
+
+    async def add_hw(self, info: Dict):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # поиск ученика
+            student = await self.get_user_id(info["student name"])
+            if not student:
+                return "Ученика с таким именем не существует"
+
+            # проверка уникальности пары ученик-дз
+            query_existing_hw = (
+                Query.from_(self.hw)
+                .select(self.hw.hw_id)
+                .where(
+                    (self.hw.reference == info["reference"])
+                    & (self.hw.student_id == student["user_id"])
+                )
+            )
+            res = await connection.fetch(str(query_existing_hw))
+            if res:
+                return "Данное дз уже создано для данного ученика"
+
+            # добавление дз
+            query = (
+                Query.into(self.hw)
+                .columns(
+                    self.hw.topic,
+                    self.hw.student_id,
+                    self.hw.reference,
+                    self.hw.deadline,
+                    self.hw.status,
+                )
+                .insert(
+                    info["topic"],
+                    student["user_id"],
+                    info["reference"],
+                    info["deadline"],
+                    "not done",
+                )
+            )
+            await connection.execute(str(query))
+            return "Домашнее задание успешно добавлено"
+        finally:
+            await connection.close()
+
+    async def remove_hw(self, student_name: str, reference: str):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            student = await self.get_user_id(student_name)
+            if not student:
+                return "Ученика с таким именем не существует"
+
+            # проверяем существование дз с определенной ссылкой
+            query_existing_ref = (
+                Query.from_(self.hw)
+                .select(self.hw.hw_id)
+                .where(
+                    (self.hw.student_id == student["user_id"])
+                    & (self.hw.reference == reference)
+                )
+            )
+            res = await connection.fetch(str(query_existing_ref))
+            if not res:
+                return "Несуществующая ссылка"
+
+            # удаляем дз
+            query = (
+                Query.from_(self.hw)
+                .delete()
+                .where(
+                    (self.hw.student_id == student["user_id"])
+                    & (self.hw.reference == reference)
+                )
+            )
+            await connection.execute(str(query))
+            return "Дз успешно удалено"
         finally:
             await connection.close()
 

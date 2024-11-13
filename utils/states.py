@@ -19,3 +19,8 @@ class SendingHw(StatesGroup):
 class ChangeUser(StatesGroup):
     adding_user = State()
     removing_user = State()
+
+
+class ChangeHw(StatesGroup):
+    adding_hw = State()
+    removing_hw = State()
