@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import F, Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -47,6 +49,10 @@ async def authorization(message: types.Message, state: FSMContext):
         if res["status"] == "teacher":
             await state.set_state(states.UserStatus.teacher)
         else:
+            # вызываем функцию для уведомления о занятии
+            from utils.notification import scheduler
+            asyncio.create_task(scheduler(res['user_id'], message.chat.id))
+
             await state.set_state(states.UserStatus.student)
 
         await state.update_data(user_id=res["user_id"])

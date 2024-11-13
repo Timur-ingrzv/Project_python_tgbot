@@ -50,6 +50,7 @@ async def show_hw(callback: types.CallbackQuery, state: FSMContext):
                 f"<b>Тема:</b> {hw['topic']}\n"
                 f"<b>Ссылка на дз:</b> {hw['reference']}\n"
                 f"<b>Дедлайн:</b> {hw['deadline']}\n"
+                f"<b>Статус:</b> {'Отправлено' if hw['status'] == 'Done' else 'Не сделано'}"
             )
     else:
         await callback.message.answer(
@@ -105,6 +106,9 @@ async def send_hw(message: types.Message, state: FSMContext):
                         file_data, file_name, student_name
                     )
 
+                    # обновляем статус дз
+                    if result == "Файл успешно отправлен":
+                        await db.set_status_done(user_data["user_id"], user_data["link"])
                     await message.answer(f"{result}")
                 else:
                     await message.answer(
