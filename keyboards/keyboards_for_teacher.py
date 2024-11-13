@@ -1,4 +1,37 @@
-from aiogram import F, Router, types
-from aiogram.types import Message
+from aiogram import types
 
-router = Router()
+
+def get_interface_for_teacher():
+    buttons = [
+        [
+            types.InlineKeyboardButton(
+                text="Добавить пользователя", callback_data="add user"
+            ),
+            types.InlineKeyboardButton(
+                text="Удалить пользователя", callback_data="remove user"
+            ),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="Добавить занятие", callback_data="add lesson"
+            ),
+            types.InlineKeyboardButton(
+                text="Удалить занятие", callback_data="remove lesson"
+            ),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="Добавить ДЗ", callback_data="add hw"
+            ),
+            types.InlineKeyboardButton(
+                text="Удалить ДЗ", callback_data="remove hw"
+            ),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="Выйти из профиля", callback_data="exit profile"
+            )
+        ],
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    return keyboard

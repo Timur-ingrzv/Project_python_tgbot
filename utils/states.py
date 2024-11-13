@@ -14,3 +14,8 @@ class UserStatus(StatesGroup):
 class SendingHw(StatesGroup):
     waiting_for_link = State()
     waiting_for_file = State()
+
+
+class ChangeUser(StatesGroup):
+    adding_user = State()
+    removing_user = State()

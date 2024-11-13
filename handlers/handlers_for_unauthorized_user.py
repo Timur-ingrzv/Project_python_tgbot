@@ -5,6 +5,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 
 from keyboards.keyboards_for_student import get_interface_for_student
+from keyboards.keyboards_for_teacher import get_interface_for_teacher
 from utils import states
 from database.methods import db
 
@@ -48,17 +49,20 @@ async def authorization(message: types.Message, state: FSMContext):
         # ставим статус пользователя
         if res["status"] == "teacher":
             await state.set_state(states.UserStatus.teacher)
+            interface = get_interface_for_teacher()
         else:
             # вызываем функцию для уведомления о занятии
             from utils.notification import scheduler
-            asyncio.create_task(scheduler(res['user_id'], message.chat.id))
+
+            asyncio.create_task(scheduler(res["user_id"], message.chat.id))
 
             await state.set_state(states.UserStatus.student)
+            interface = get_interface_for_student()
 
         await state.update_data(user_id=res["user_id"])
         await message.answer(
             f"С возвращением, {res['name']}",
-            reply_markup=get_interface_for_student(),
+            reply_markup=interface,
         )
 
 

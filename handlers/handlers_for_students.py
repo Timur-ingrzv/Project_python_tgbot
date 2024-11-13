@@ -89,9 +89,7 @@ async def send_hw(message: types.Message, state: FSMContext):
 
         # получаем файл
         file_info = await bot.get_file(file_id)
-        file_url = (
-            f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
-        )
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
 
         async with aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(ssl=False)
@@ -108,7 +106,9 @@ async def send_hw(message: types.Message, state: FSMContext):
 
                     # обновляем статус дз
                     if result == "Файл успешно отправлен":
-                        await db.set_status_done(user_data["user_id"], user_data["link"])
+                        await db.set_status_done(
+                            user_data["user_id"], user_data["link"]
+                        )
                     await message.answer(f"{result}")
                 else:
                     await message.answer(

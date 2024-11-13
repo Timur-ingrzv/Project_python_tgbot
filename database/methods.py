@@ -7,9 +7,9 @@ from pypika import Table, Query
 from config import DATABASE_CONFIG
 
 
-class Database:
-    def __init__(self):
-        self.db_config = DATABASE_CONFIG
+class MethodsForStudent:
+    def __init__(self, config):
+        self.db_config = config
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
@@ -67,7 +67,12 @@ class Database:
         try:
             query = (
                 Query.from_(self.hw)
-                .select(self.hw.topic, self.hw.reference, self.hw.deadline, self.hw.status)
+                .select(
+                    self.hw.topic,
+                    self.hw.reference,
+                    self.hw.deadline,
+                    self.hw.status,
+                )
                 .where(self.hw.status != "Deadline")
                 .where(self.hw.student_id == user_id)
             )
@@ -136,5 +141,86 @@ class Database:
         finally:
             await connection.close()
 
-db = Database()
-print(asyncio.run(db.find_lesson(1)))
+
+class MethodsForTeacher:
+    def __init__(self, config):
+        self.db_config = config
+        self.users = Table("users")
+        self.schedule = Table("schedule")
+        self.hw = Table("homework")
+
+    async def add_user(self, info: Dict) -> str:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # проверка уникальности элемента таблицы
+            query_check_existing = (
+                Query.from_(self.users)
+                .select(self.users.user_id)
+                .where(
+                    (self.users.name == info["name"])
+                    | (
+                        (self.users.login == info["login"])
+                        & (self.users.password == info["password"])
+                    )
+                )
+            )
+            res = await connection.fetch(str(query_check_existing))
+            if res:
+                return "Пользователь с таким именем или с парой логин-пароль существует"
+
+            # добавление ученика
+            query = (
+                Query.into(self.users)
+                .columns(
+                    self.users.name,
+                    self.users.login,
+                    self.users.password,
+                    self.users.status,
+                )
+                .insert(
+                    info["name"],
+                    info["login"],
+                    info["password"],
+                    info["status"],
+                )
+            )
+            await connection.execute(str(query))
+            return f"Пользователь {info['name']} успешно добавлен"
+
+        finally:
+            await connection.close()
+
+    async def remove_user(self, user_id: int, name_to_delete: str):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # проверка существования пользователя
+            query_existing = (
+                Query.from_(self.users)
+                .select(self.users.user_id)
+                .where(self.users.name == name_to_delete)
+            )
+            res = await connection.fetchrow(str(query_existing))
+            if not res:
+                return "Пользователя не существует"
+
+            if res["user_id"] == user_id:
+                return "Вы пытаетесь удалить себя"
+
+            # удаление пользователя
+            query = (
+                Query.from_(self.users)
+                .delete()
+                .where(self.users.name == name_to_delete)
+            )
+            await connection.execute(str(query))
+            return "Пользователь успешно удален"
+        finally:
+            await connection.close()
+
+
+class Database(MethodsForStudent, MethodsForTeacher):
+    def __init__(self, config):
+        MethodsForStudent.__init__(self, config)
+
+
+db = Database(DATABASE_CONFIG)
