@@ -12,6 +12,7 @@ router = Router()
 
 @router.callback_query(F.data == "exit profile")
 async def exit_profile(callback: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
     await state.clear()
     message = types.Message(
         message_id=callback.message.message_id,
@@ -22,7 +23,7 @@ async def exit_profile(callback: types.CallbackQuery, state: FSMContext):
     )
     from bot import cmd_start, bot
 
-    await cmd_start(message, bot)
+    await cmd_start(message, bot, user_data["user_id"])
 
 
 @router.callback_query(F.data == "show schedule")

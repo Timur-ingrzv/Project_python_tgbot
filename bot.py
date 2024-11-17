@@ -22,6 +22,8 @@ bot = Bot(
 # Диспетчер
 dp = Dispatcher()
 
+notifications = {}
+
 
 # Запуск процесса поллинга новых апдейтов
 async def main():
@@ -35,7 +37,12 @@ async def main():
 
 
 @dp.message(Command("start"))
-async def cmd_start(message: Message, bot: Bot):
+async def cmd_start(message: Message, bot: Bot, prev_user_id=None):
+    # останавливаем уведомления
+    if prev_user_id:
+        notifications[prev_user_id].cancel()
+        del notifications[prev_user_id]
+
     await bot.send_message(
         chat_id=message.chat.id,
         text="Привет!\nЯ помощник для организации учебы",
