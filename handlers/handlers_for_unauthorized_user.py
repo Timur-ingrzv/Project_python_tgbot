@@ -52,11 +52,11 @@ async def authorization(message: types.Message, state: FSMContext):
             interface = get_interface_for_teacher()
         else:
             # вызываем функцию для уведомления о занятии
-            from utils.notification import scheduler
+            from utils.sheduler import scheduler_notification_lesson
             from bot import notifications
 
             notifications[res["user_id"]] = asyncio.create_task(
-                scheduler(res["user_id"], message.chat.id)
+                scheduler_notification_lesson(res["user_id"], message.chat.id)
             )
 
             await state.set_state(states.UserStatus.student)

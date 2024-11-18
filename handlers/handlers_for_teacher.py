@@ -1,9 +1,11 @@
+import asyncio
 from datetime import datetime
 
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 
+from utils.sheduler import scheduler_set_deadline
 from utils.states import ChangeUser, UserStatus, ChangeHw
 from database.methods import db
 
@@ -89,7 +91,7 @@ async def waiting_for_info_to_add_hw(
         "'Тема'\n"
         "'Имя ученика'\n"
         "'\Ссылка на дз'\n"
-        "'Время сдачи в формате dd-mm-yyyy hours'\n"
+        "'Время сдачи в формате dd-mm-yyyy hours:minutes'\n"
     )
 
 
@@ -112,10 +114,16 @@ async def add_hw(message: types.Message, state: FSMContext):
         return
 
     try:
-        valid_date = datetime.strptime(data[3], "%d-%m-%Y %H")
+        valid_date = datetime.strptime(data[3], "%d-%m-%Y %H:%M")
     except Exception:
         await message.answer(
             "Неправильная информация о дз:\n" "Неправильный формат даты"
+        )
+        return
+
+    if valid_date < datetime.now():
+        await message.answer(
+            "Неправильное время дедлайна: раньше текущего времени"
         )
         return
 
@@ -126,7 +134,17 @@ async def add_hw(message: types.Message, state: FSMContext):
         "reference": data[2].strip(),
         "deadline": valid_date,
     }
+
     res = await db.add_hw(info)
+
+    # создаем отложенную таску для изменения статуса на дедлайн
+    if "успешно добавлено" in res:
+        delta = valid_date - datetime.now()
+        asyncio.create_task(
+            scheduler_set_deadline(
+                delta, info["student name"], info["reference"]
+            )
+        )
     await message.answer(res)
 
 

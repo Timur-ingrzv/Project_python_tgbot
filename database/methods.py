@@ -307,6 +307,29 @@ class MethodsForTeacher:
         finally:
             await connection.close()
 
+    async def set_hw_deadline(self, student_id: int, reference: str):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # меняем статус дз в зависимости от сделано оно или нет
+            query_done = (
+                Query.update(self.hw)
+                .where(self.hw.student_id == student_id)
+                .where(self.hw.reference == reference)
+                .where(self.hw.status == "done")
+                .set(self.hw.status, "deadline, done")
+            )
+            query_not_done = (
+                Query.update(self.hw)
+                .where(self.hw.student_id == student_id)
+                .where(self.hw.reference == reference)
+                .where(self.hw.status == "not done")
+                .set(self.hw.status, "deadline, not done")
+            )
+            await connection.execute(str(query_done))
+            await connection.execute(str(query_not_done))
+        finally:
+            await connection.close()
+
 
 class Database(MethodsForStudent, MethodsForTeacher):
     def __init__(self, config):
@@ -314,3 +337,5 @@ class Database(MethodsForStudent, MethodsForTeacher):
 
 
 db = Database(DATABASE_CONFIG)
+res = asyncio.run(db.get_user_id("test_student1"))
+print(res["user_id"])
