@@ -40,8 +40,11 @@ async def main():
 async def cmd_start(message: Message, bot: Bot, prev_user_id=None):
     # останавливаем уведомления
     if prev_user_id:
-        notifications[prev_user_id].cancel()
-        del notifications[prev_user_id]
+        try:
+            notifications[prev_user_id].cancel()
+            del notifications[prev_user_id]
+        finally:
+            pass
 
     await bot.send_message(
         chat_id=message.chat.id,

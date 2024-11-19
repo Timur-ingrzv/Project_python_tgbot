@@ -149,7 +149,7 @@ class MethodsForTeacher:
         self.schedule = Table("schedule")
         self.hw = Table("homework")
 
-    async def get_user_id(self, name: str):
+    async def get_user_id(self, name: str) -> int:
         connection = await asyncpg.connect(**self.db_config)
         try:
             query = (
@@ -157,7 +157,11 @@ class MethodsForTeacher:
                 .select(self.users.user_id)
                 .where(self.users.name == name)
             )
-            return await connection.fetchrow(str(query))
+            res = await connection.fetchrow(str(query))
+            if res:
+                return res["user_id"]
+            else:
+                return None
         finally:
             await connection.close()
 
@@ -233,8 +237,8 @@ class MethodsForTeacher:
         connection = await asyncpg.connect(**self.db_config)
         try:
             # поиск ученика
-            student = await self.get_user_id(info["student name"])
-            if not student:
+            user_id = await self.get_user_id(info["student name"])
+            if not user_id:
                 return "Ученика с таким именем не существует"
 
             # проверка уникальности пары ученик-дз
@@ -243,7 +247,7 @@ class MethodsForTeacher:
                 .select(self.hw.hw_id)
                 .where(
                     (self.hw.reference == info["reference"])
-                    & (self.hw.student_id == student["user_id"])
+                    & (self.hw.student_id == user_id)
                 )
             )
             res = await connection.fetch(str(query_existing_hw))
@@ -262,7 +266,7 @@ class MethodsForTeacher:
                 )
                 .insert(
                     info["topic"],
-                    student["user_id"],
+                    user_id,
                     info["reference"],
                     info["deadline"],
                     "not done",
@@ -276,8 +280,8 @@ class MethodsForTeacher:
     async def remove_hw(self, student_name: str, reference: str):
         connection = await asyncpg.connect(**self.db_config)
         try:
-            student = await self.get_user_id(student_name)
-            if not student:
+            user_id = await self.get_user_id(student_name)
+            if not user_id:
                 return "Ученика с таким именем не существует"
 
             # проверяем существование дз с определенной ссылкой
@@ -285,7 +289,7 @@ class MethodsForTeacher:
                 Query.from_(self.hw)
                 .select(self.hw.hw_id)
                 .where(
-                    (self.hw.student_id == student["user_id"])
+                    (self.hw.student_id == user_id)
                     & (self.hw.reference == reference)
                 )
             )
@@ -298,7 +302,7 @@ class MethodsForTeacher:
                 Query.from_(self.hw)
                 .delete()
                 .where(
-                    (self.hw.student_id == student["user_id"])
+                    (self.hw.student_id == user_id)
                     & (self.hw.reference == reference)
                 )
             )
@@ -330,6 +334,45 @@ class MethodsForTeacher:
         finally:
             await connection.close()
 
+    async def add_lesson(self, info: Dict):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # проверка существования ученика
+            student_id = await db.get_user_id(info["student_name"])
+            if not student_id:
+                return "Ученика с таким именем не существует"
+
+            # проверка свободна ли дата
+            date = info["date"]
+            prev_time = date - timedelta(minutes=59)
+            future_time = date + timedelta(minutes=59)
+            query_check = (
+                Query.from_(self.schedule)
+                .select(self.schedule.schedule_id)
+                .where(self.schedule.date[prev_time:future_time])
+            )
+            res = await connection.fetch(str(query_check))
+            if res:
+                return "Время занято:\nЕсть занятие в промежутке меньше 1 часа"
+
+            # добавление урока
+            query = (
+                Query.into(self.schedule)
+                .columns(
+                    self.schedule.student_id,
+                    self.schedule.teacher_id,
+                    self.schedule.date,
+                    self.schedule.topic,
+                )
+                .insert(
+                    student_id, info["teacher_id"], info["date"], info["topic"]
+                )
+            )
+            await connection.execute(str(query))
+            return "Занятие успешно добавлено"
+        finally:
+            await connection.close()
+
 
 class Database(MethodsForStudent, MethodsForTeacher):
     def __init__(self, config):
@@ -337,5 +380,3 @@ class Database(MethodsForStudent, MethodsForTeacher):
 
 
 db = Database(DATABASE_CONFIG)
-res = asyncio.run(db.get_user_id("test_student1"))
-print(res["user_id"])

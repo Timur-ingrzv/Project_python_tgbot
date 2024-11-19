@@ -24,3 +24,8 @@ class ChangeUser(StatesGroup):
 class ChangeHw(StatesGroup):
     adding_hw = State()
     removing_hw = State()
+
+
+class ChangeLesson(StatesGroup):
+    adding_lesson = State()
+    removing_lesson = State()

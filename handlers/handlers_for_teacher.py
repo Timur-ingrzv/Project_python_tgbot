@@ -1,15 +1,27 @@
 import asyncio
 from datetime import datetime
+from typing import List
 
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 
-from utils.sheduler import scheduler_set_deadline
-from utils.states import ChangeUser, UserStatus, ChangeHw
+from utils.scheduler import scheduler_set_deadline
+from utils.states import ChangeUser, UserStatus, ChangeHw, ChangeLesson
 from database.methods import db
 
 router = Router()
+
+
+def check_valid_data(data: List, length: int) -> str:
+    if len(data) != length:
+        return (
+            f"Неправильная информация:\n" f"Количество строк не равно {length}"
+        )
+
+    if any(el.strip() == "" for el in data):
+        return "Неправильная информация о дз:\n" "Присутствует пустая строка"
+    return "ok"
 
 
 @router.callback_query(F.data == "add user")
@@ -31,25 +43,16 @@ async def add_user(message: types.Message, state: FSMContext):
     await state.set_state(UserStatus.teacher)
     data = message.text.split("\n")
 
-    # проверка корректности данных
-    if len(data) != 4:
-        await message.answer(
-            "Неправильная информация о пользователе\n"
-            "Количество строк не равно 4"
-        )
+    # проверка корректности данных об ученике
+    checker_res = check_valid_data(data, 4)
+    if checker_res != "ok":
+        await message.answer(checker_res)
         return
 
     if not ("учитель" in data[3].lower() or "ученик" in data[3].lower()):
         await message.answer(
             "Неправильная информация о пользователе\n"
             "Тип пользователя не ученик и не учитель"
-        )
-        return
-
-    if any(el.strip() == "" for el in data):
-        await message.answer(
-            "Неправильная информация о пользователе\n"
-            "Присутствует пустая строка"
         )
         return
 
@@ -101,16 +104,9 @@ async def add_hw(message: types.Message, state: FSMContext):
     data = message.text.split("\n")
 
     # проверка корректности информации о дз
-    if len(data) != 4:
-        await message.answer(
-            "Неправильная информация о дз:\n" "Количество строк не равно 4"
-        )
-        return
-
-    if any(el.strip() == "" for el in data):
-        await message.answer(
-            "Неправильная информация о дз:\n" "Присутсвует пустая строка"
-        )
+    checker_res = check_valid_data(data, 4)
+    if checker_res != "ok":
+        await message.answer(checker_res)
         return
 
     try:
@@ -123,7 +119,7 @@ async def add_hw(message: types.Message, state: FSMContext):
 
     if valid_date < datetime.now():
         await message.answer(
-            "Неправильное время дедлайна: раньше текущего времени"
+            "Неправильное время дедлайна:\n" "Раньше текущего времени"
         )
         return
 
@@ -140,7 +136,7 @@ async def add_hw(message: types.Message, state: FSMContext):
     # создаем отложенную таску для изменения статуса на дедлайн
     if "успешно добавлено" in res:
         delta = valid_date - datetime.now()
-        asyncio.create_task(
+        t_1 = asyncio.create_task(
             scheduler_set_deadline(
                 delta, info["student name"], info["reference"]
             )
@@ -154,7 +150,7 @@ async def waiting_for_info_to_remove_hw(
 ):
     await state.set_state(ChangeHw.removing_hw)
     await callback.message.answer(
-        "Введите данные о домашнем задании в формате для удаления:\n"
+        "Введите данные о домашнем задании для удаления в формате:\n"
         "'Имя ученика'\n"
         "'Ссылка на дз'\n"
     )
@@ -165,20 +161,63 @@ async def remove_hw(message: types.Message, state: FSMContext):
     await state.set_state(UserStatus.teacher)
     data = message.text.split("\n")
 
-    # проверка корректности данных
-    if len(data) != 2:
-        await message.answer(
-            "fНеправильная информация о дз:\n" f"Количество строк не равно 2"
-        )
-        return
-
-    if any(el.strip() == "" for el in data):
-        await message.answer(
-            "fНеправильная информация о дз:\n" f"Присутствует пустая строка"
-        )
+    # проверка корректности данных о дз
+    checker_res = check_valid_data(data, 2)
+    if checker_res != "ok":
+        await message.answer(checker_res)
         return
 
     student_name = data[0].strip()
     hw_reference = data[1].strip()
     res = await db.remove_hw(student_name, hw_reference)
+    await message.answer(res)
+
+
+@router.callback_query(F.data == "add lesson")
+async def waiting_for_info_to_add_lesson(
+    callback: types.CallbackQuery, state: FSMContext
+):
+    await state.set_state(ChangeLesson.adding_lesson)
+    await callback.message.answer(
+        f"Введите данные об уроке в формате:\n"
+        f"'Имя ученика'\n"
+        f"'Тема урока'\n"
+        f"'Время урока в формате dd-mm-yyyy hours:minutes'"
+    )
+
+
+@router.message(StateFilter(ChangeLesson.adding_lesson))
+async def add_lesson(message: types.Message, state: FSMContext):
+    await state.set_state(UserStatus.teacher)
+    data = message.text.split("\n")
+
+    # проверка корректности информации об уроке
+    checker_res = check_valid_data(data, 3)
+    if checker_res != "ok":
+        await message.answer(checker_res)
+        return
+
+    try:
+        valid_date = datetime.strptime(data[2], "%d-%m-%Y %H:%M")
+    except Exception:
+        await message.answer(
+            "Неправильная информация об уроке:\n" "Неправильный формат даты"
+        )
+        return
+
+    if valid_date < datetime.now():
+        await message.answer(
+            "Неправильное время урока:\n" "Раньше текущего времени"
+        )
+        return
+
+    # добавление урока
+    user_data = await state.get_data()
+    info = {
+        "student_name": data[0].strip(),
+        "topic": data[1].strip(),
+        "date": valid_date,
+        "teacher_id": user_data["user_id"],
+    }
+    res = await db.add_lesson(info)
     await message.answer(res)
