@@ -14,7 +14,6 @@ class MethodsForStudent:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
-        self.stat = Table("statistic")
 
     async def find_user(self, login: str, password: str) -> Dict:
         connection = await asyncpg.connect(**self.db_config)
@@ -160,7 +159,6 @@ class MethodsForTeacher:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
-        self.stat = Table("statistic")
 
     async def get_user_id(self, name: str) -> Optional[int]:
         connection = await asyncpg.connect(**self.db_config)
@@ -351,23 +349,24 @@ class MethodsForTeacher:
     async def set_hw_deadline(self, student_id: int, reference: str) -> None:
         connection = await asyncpg.connect(**self.db_config)
         try:
-            # меняем статус дз в зависимости от сделано оно или нет
-            query_done = (
-                Query.update(self.hw)
-                .where(self.hw.student_id == student_id)
-                .where(self.hw.reference == reference)
-                .where(self.hw.status == "done")
-                .set(self.hw.status, "deadline, done")
-            )
-            query_not_done = (
-                Query.update(self.hw)
-                .where(self.hw.student_id == student_id)
-                .where(self.hw.reference == reference)
-                .where(self.hw.status == "not done")
-                .set(self.hw.status, "deadline, not done")
-            )
-            await connection.execute(str(query_done))
-            await connection.execute(str(query_not_done))
+            async with connection.transaction():
+                # меняем статус дз в зависимости от сделано оно или нет
+                query_check_status = (
+                    Query.from_(self.hw)
+                    .select(self.hw.hw_id, self.hw.status)
+                    .where(self.hw.student_id == student_id)
+                    .where(self.hw.reference == reference)
+                )
+                res = await connection.fetchrow(str(query_check_status))
+                if not res:
+                    return
+
+                query_set_status = (
+                    Query.update(self.hw)
+                    .set(self.hw.status, f"deadline, {res['status']}")
+                    .where(self.hw.hw_id == res["hw_id"])
+                )
+                await connection.exectute(str(query_set_status))
 
         except Exception as e:
             logging.error(e)
@@ -523,7 +522,6 @@ class MethodsForStatistic:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
-        self.stat = Table("statistic")
 
     async def get_stat_lesson(
         self, teacher_id: int, start: datetime, finish: datetime
@@ -547,6 +545,27 @@ class MethodsForStatistic:
         finally:
             await connection.close()
 
+    async def get_stat_student(
+        self, student_id: int, start: datetime, finish: datetime
+    ):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.hw)
+                .select(self.hw.status, fn.Count("*").as_("count"))
+                .where(self.hw.student_id == student_id)
+                .where(self.hw.deadline[start:finish])
+                .groupby(self.hw.status)
+            )
+            res = await connection.fetch(str(query))
+            return res
+
+        except Exception as e:
+            logging.error(e)
+
+        finally:
+            await connection.close()
+
 
 class Database(MethodsForStudent, MethodsForTeacher, MethodsForStatistic):
     def __init__(self, config):
@@ -554,5 +573,5 @@ class Database(MethodsForStudent, MethodsForTeacher, MethodsForStatistic):
 
 
 db = Database(DATABASE_CONFIG)
-res = asyncio.run(db.get_stat_lesson(2, "2024-11-01", "2024-11-30"))
-print(res["total_price"])
+res = asyncio.run(db.get_stat_student(1, "2024-11-01", "2024-11-25"))
+print(res[1]["status"])
