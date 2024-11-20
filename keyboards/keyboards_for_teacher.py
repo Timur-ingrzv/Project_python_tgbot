@@ -29,6 +29,21 @@ def get_interface_for_teacher():
         ],
         [
             types.InlineKeyboardButton(
+                text="Посмотреть уроки",
+                callback_data="show lesson for teacher",
+            ),
+            types.InlineKeyboardButton(
+                text="Посмотреть дз ученика",
+                callback_data="show hw for teacher",
+            ),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="Статистика", callback_data="get statistic interface"
+            )
+        ],
+        [
+            types.InlineKeyboardButton(
                 text="Выйти из профиля", callback_data="exit profile"
             )
         ],

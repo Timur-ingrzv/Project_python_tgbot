@@ -1,9 +1,11 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
+import logging
+from webbrowser import Opera
 
 import asyncpg
-from pypika import Table, Query
+from pypika import Table, Query, Order
 from config import DATABASE_CONFIG
 
 
@@ -56,6 +58,8 @@ class MethodsForStudent:
                 )
                 .where(self.schedule.date > now)
                 .where(self.schedule.student_id == user_id)
+                .orderby(self.schedule.date, order=Order.asc)
+                .limit(5)
             )
             res = await connection.fetch(str(query))
             return res
@@ -91,6 +95,10 @@ class MethodsForStudent:
             )
             res = await connection.fetch(str(query))
             return res[0]["name"]
+
+        except Exception as e:
+            logging.info(e)
+
         finally:
             await connection.close()
 
@@ -138,6 +146,10 @@ class MethodsForStudent:
             )
             res = await connection.fetch(str(query))
             return res
+
+        except Exception as e:
+            logging.info(e)
+
         finally:
             await connection.close()
 
@@ -149,7 +161,7 @@ class MethodsForTeacher:
         self.schedule = Table("schedule")
         self.hw = Table("homework")
 
-    async def get_user_id(self, name: str) -> int:
+    async def get_user_id(self, name: str) -> Optional[int]:
         connection = await asyncpg.connect(**self.db_config)
         try:
             query = (
@@ -162,6 +174,11 @@ class MethodsForTeacher:
                 return res["user_id"]
             else:
                 return None
+
+        except Exception as e:
+            logging.info(e)
+            return None
+
         finally:
             await connection.close()
 
@@ -203,6 +220,10 @@ class MethodsForTeacher:
             await connection.execute(str(query))
             return f"Пользователь {info['name']} успешно добавлен"
 
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращении к базе данных\nПовторите позже"
+
         finally:
             await connection.close()
 
@@ -230,6 +251,11 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query))
             return "Пользователь успешно удален"
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
         finally:
             await connection.close()
 
@@ -274,6 +300,11 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query))
             return "Домашнее задание успешно добавлено"
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
         finally:
             await connection.close()
 
@@ -308,10 +339,15 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query))
             return "Дз успешно удалено"
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
         finally:
             await connection.close()
 
-    async def set_hw_deadline(self, student_id: int, reference: str):
+    async def set_hw_deadline(self, student_id: int, reference: str) -> None:
         connection = await asyncpg.connect(**self.db_config)
         try:
             # меняем статус дз в зависимости от сделано оно или нет
@@ -331,10 +367,14 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query_done))
             await connection.execute(str(query_not_done))
+
+        except Exception as e:
+            logging.info(e)
+
         finally:
             await connection.close()
 
-    async def add_lesson(self, info: Dict):
+    async def add_lesson(self, info: Dict) -> str:
         connection = await asyncpg.connect(**self.db_config)
         try:
             # проверка существования ученика
@@ -370,6 +410,103 @@ class MethodsForTeacher:
             )
             await connection.execute(str(query))
             return "Занятие успешно добавлено"
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
+        finally:
+            await connection.close()
+
+    async def remove_lesson(self, teacher_id: int, date: datetime) -> str:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # проверка существования
+            query_find = (
+                Query.from_(self.schedule)
+                .select(self.schedule.schedule_id)
+                .where(self.schedule.date == date)
+            )
+            res = await connection.fetch(str(query_find))
+            if not res:
+                return "Урока в данное время не запланировано"
+
+            # удаление
+            query = (
+                Query.from_(self.schedule)
+                .delete()
+                .where(self.schedule.date == date)
+                .where(self.schedule.teacher_id == teacher_id)
+            )
+            await connection.execute(str(query))
+            return "Урок успешно удален"
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
+        finally:
+            await connection.close()
+
+    async def get_future_lessons_for_teacher(self, teacher_id: int):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                Query.from_(self.schedule)
+                .join(self.users)
+                .on(self.schedule.student_id == self.users.user_id)
+                .select(
+                    self.users.name,
+                    self.schedule.date,
+                    self.schedule.topic,
+                )
+                .where(self.schedule.teacher_id == teacher_id)
+                .orderby(self.schedule.date, order=Order.asc)
+                .limit(5)
+            )
+            res = await connection.fetch(str(query))
+            return res
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращение к базе данных\nПовторите позже"
+
+        finally:
+            await connection.close()
+
+    async def get_hw_for_teacher(self, info: Dict):
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            # проверка существования ученика
+            student_id = await db.get_user_id(info["name"])
+            if not student_id:
+                return "Ученика с таким именем не существует"
+
+            start = info["start"]
+            end = info["end"]
+            query = (
+                Query.from_(self.hw)
+                .join(self.users)
+                .on(self.hw.student_id == self.users.user_id)
+                .select(
+                    self.users.name,
+                    self.hw.topic,
+                    self.hw.reference,
+                    self.hw.deadline,
+                    self.hw.status,
+                )
+                .where(self.users.name == info["name"])
+                .where(self.hw.deadline[start:end])
+                .orderby(self.hw.deadline, order=Order.asc)
+                .limit(5)
+            )
+            res = await connection.fetch(str(query))
+            return res
+
+        except Exception as e:
+            logging.info(e)
+            return "Ошибка в обращении к базе данных\nПовторите позже"
+
         finally:
             await connection.close()
 
