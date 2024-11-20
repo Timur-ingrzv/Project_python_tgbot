@@ -50,3 +50,22 @@ def get_interface_for_teacher():
     ]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     return keyboard
+
+
+def get_interface_for_statistic():
+    buttons = [
+        [
+            types.InlineKeyboardButton(
+                text="Посмотреть статистику ученика",
+                callback_data="statistic for student",
+            )
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="Посмотреть статистику проведенных уроков",
+                callback_data="statistic for lessons",
+            )
+        ],
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    return keyboard

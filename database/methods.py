@@ -2,10 +2,9 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 import logging
-from webbrowser import Opera
 
 import asyncpg
-from pypika import Table, Query, Order
+from pypika import Table, Query, Order, functions as fn
 from config import DATABASE_CONFIG
 
 
@@ -15,6 +14,7 @@ class MethodsForStudent:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
+        self.stat = Table("statistic")
 
     async def find_user(self, login: str, password: str) -> Dict:
         connection = await asyncpg.connect(**self.db_config)
@@ -97,7 +97,7 @@ class MethodsForStudent:
             return res[0]["name"]
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
 
         finally:
             await connection.close()
@@ -148,7 +148,7 @@ class MethodsForStudent:
             return res
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
 
         finally:
             await connection.close()
@@ -160,6 +160,7 @@ class MethodsForTeacher:
         self.users = Table("users")
         self.schedule = Table("schedule")
         self.hw = Table("homework")
+        self.stat = Table("statistic")
 
     async def get_user_id(self, name: str) -> Optional[int]:
         connection = await asyncpg.connect(**self.db_config)
@@ -176,7 +177,7 @@ class MethodsForTeacher:
                 return None
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return None
 
         finally:
@@ -221,7 +222,7 @@ class MethodsForTeacher:
             return f"Пользователь {info['name']} успешно добавлен"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращении к базе данных\nПовторите позже"
 
         finally:
@@ -253,7 +254,7 @@ class MethodsForTeacher:
             return "Пользователь успешно удален"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -302,7 +303,7 @@ class MethodsForTeacher:
             return "Домашнее задание успешно добавлено"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -341,7 +342,7 @@ class MethodsForTeacher:
             return "Дз успешно удалено"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -369,7 +370,7 @@ class MethodsForTeacher:
             await connection.execute(str(query_not_done))
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
 
         finally:
             await connection.close()
@@ -403,16 +404,21 @@ class MethodsForTeacher:
                     self.schedule.teacher_id,
                     self.schedule.date,
                     self.schedule.topic,
+                    self.schedule.price,
                 )
                 .insert(
-                    student_id, info["teacher_id"], info["date"], info["topic"]
+                    student_id,
+                    info["teacher_id"],
+                    info["date"],
+                    info["topic"],
+                    info["price"],
                 )
             )
             await connection.execute(str(query))
             return "Занятие успешно добавлено"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -442,7 +448,7 @@ class MethodsForTeacher:
             return "Урок успешно удален"
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -468,7 +474,7 @@ class MethodsForTeacher:
             return res
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращение к базе данных\nПовторите позже"
 
         finally:
@@ -504,16 +510,49 @@ class MethodsForTeacher:
             return res
 
         except Exception as e:
-            logging.info(e)
+            logging.error(e)
             return "Ошибка в обращении к базе данных\nПовторите позже"
 
         finally:
             await connection.close()
 
 
-class Database(MethodsForStudent, MethodsForTeacher):
+class MethodsForStatistic:
+    def __init__(self, config):
+        self.db_config = config
+        self.users = Table("users")
+        self.schedule = Table("schedule")
+        self.hw = Table("homework")
+        self.stat = Table("statistic")
+
+    async def get_stat_lesson(
+        self, teacher_id: int, start: datetime, finish: datetime
+    ) -> Dict:
+        connection = await asyncpg.connect(**self.db_config)
+        try:
+            query = (
+                f"SELECT Sum(price) AS total_price, "
+                f"COUNT(DISTINCT student_id) AS unique_students, "
+                f"COUNT(schedule_id) as total_lessons "
+                f"FROM schedule WHERE (date BETWEEN '{start}' AND '{finish}') "
+                f"AND (teacher_id = {teacher_id})"
+            )
+            res = await connection.fetchrow(str(query))
+            return res
+
+        except Exception as e:
+            logging.error(e)
+            return "Ошибка в обращении к базе данных\nПовторите позже"
+
+        finally:
+            await connection.close()
+
+
+class Database(MethodsForStudent, MethodsForTeacher, MethodsForStatistic):
     def __init__(self, config):
         MethodsForStudent.__init__(self, config)
 
 
 db = Database(DATABASE_CONFIG)
+res = asyncio.run(db.get_stat_lesson(2, "2024-11-01", "2024-11-30"))
+print(res["total_price"])

@@ -30,3 +30,8 @@ class StatusHw(StatesGroup):
 class ChangeLesson(StatesGroup):
     adding_lesson = State()
     removing_lesson = State()
+
+
+class Statistic(StatesGroup):
+    stat_lessons = State()
+    stat_student = State()

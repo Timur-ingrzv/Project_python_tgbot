@@ -11,6 +11,7 @@ from handlers import (
     handlers_for_students,
     handlers_for_teacher,
     handlers_for_unauthorized_user,
+    handlers_statistic_for_teacher,
 )
 from keyboards.keyboards_for_unauthorized_user import get_start_keyboard
 
@@ -31,6 +32,7 @@ async def main():
         handlers_for_students.router,
         handlers_for_teacher.router,
         handlers_for_unauthorized_user.router,
+        handlers_statistic_for_teacher.router,
     )
 
     await dp.start_polling(bot)

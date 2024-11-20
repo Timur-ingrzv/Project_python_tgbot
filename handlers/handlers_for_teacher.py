@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from typing import List, Dict
 
@@ -189,7 +190,8 @@ async def waiting_for_info_to_add_lesson(
         f"Введите данные об уроке в формате:\n"
         f"'Имя ученика'\n"
         f"'Тема урока'\n"
-        f"'Время урока в формате dd-mm-yyyy hours:minutes'"
+        f"'Время урока в формате dd-mm-yyyy hours:minutes'\n"
+        f"'Цена занятия'"
     )
 
 
@@ -199,9 +201,16 @@ async def add_lesson(message: types.Message, state: FSMContext):
     data = message.text.split("\n")
 
     # проверка корректности информации об уроке
-    checker_res = check_valid_data(data, 3)
+    checker_res = check_valid_data(data, 4)
     if checker_res != "ok":
         await message.answer(checker_res)
+        return
+
+    try:
+        price = int(data[3])
+    except Exception as e:
+        logging.error(e)
+        await message.answer("Цена должна быть целым числом")
         return
 
     valid_date: Dict = get_valid_date(data[2])
@@ -216,6 +225,7 @@ async def add_lesson(message: types.Message, state: FSMContext):
         "topic": data[1].strip(),
         "date": valid_date["date"],
         "teacher_id": user_data["user_id"],
+        "price": price,
     }
     res = await db.add_lesson(info)
     await message.answer(res)

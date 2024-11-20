@@ -67,8 +67,3 @@ async def authorization(message: types.Message, state: FSMContext):
             f"С возвращением, {res['name']}",
             reply_markup=interface,
         )
-
-
-@router.message(F.text)
-async def wrong_message(message: types.Message):
-    await message.answer("Я не понимаю, используй кнопки или напиши /start")
