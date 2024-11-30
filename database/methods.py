@@ -92,8 +92,9 @@ class MethodsForStudent:
                 .select(self.users.name)
                 .where(self.users.user_id == user_id)
             )
-            res = await connection.fetch(str(query))
-            return res[0]["name"]
+            res = await connection.fetchrow(str(query))
+            if res:
+                return res["name"]
 
         except Exception as e:
             logging.error(e)
@@ -573,5 +574,3 @@ class Database(MethodsForStudent, MethodsForTeacher, MethodsForStatistic):
 
 
 db = Database(DATABASE_CONFIG)
-res = asyncio.run(db.get_stat_student(1, "2024-11-01", "2024-11-25"))
-print(res[1]["status"])
