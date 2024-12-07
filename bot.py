@@ -34,7 +34,7 @@ async def main():
         handlers_for_unauthorized_user.router,
         handlers_statistic_for_teacher.router,
     )
-
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
