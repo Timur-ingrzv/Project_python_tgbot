@@ -1,6 +1,6 @@
 import asyncio
-import time
-from random import random
+import datetime
+from unittest.mock import patch
 
 import pytest
 import psycopg2
@@ -38,13 +38,30 @@ def init_db():
                        "deadline TIMESTAMP, "
                        "status TEXT)")
 
+        cursor.execute("CREATE TABLE IF NOT EXISTS schedule ( "
+                       "schedule_id SERIAL PRIMARY KEY, "
+                       "student_id INTEGER, "
+                       "teacher_id INTEGER, "
+                       "date TIMESTAMP, "
+                       "topic TEXT, "
+                       "price INTEGER)")
+
         # добавление данных в бд для тестов
         user_id = 1
-        cursor.execute("INSERT INTO users (user_id, name, login, password) "
-                       f"VALUES ({user_id}, 'test_name', 'test_login', 'test_password')")
+        cursor.execute("INSERT INTO users (user_id, name, login, password, status) "
+                       f"VALUES (1, 'test_name', 'test_login', 'test_password', 'student')")
+
+        cursor.execute("INSERT INTO users (user_id, name, login, password, status) "
+                       f"VALUES (2, 'test_name2', 'test_login2', 'test_passwor2', 'teacher')")
 
         cursor.execute("INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
-                       f"VALUES (1, 'test_topic', {user_id}, 'test_reference', '2024-12-31 23:59', 'test_status')")
+                       f"VALUES (1, 'test_topic', {user_id}, 'test_reference', '2024-12-31 23:59', 'not done')")
+
+        cursor.execute("INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
+                       f"VALUES (2, 'test_topic2', {user_id}, 'test_reference2', '2024-12-31 23:59', 'deadline, not done')")
+
+        cursor.execute("INSERT INTO schedule (schedule_id, student_id, teacher_id, date, topic, price) "
+                       "VALUES (1, 1, 2, '2024-12-31 23:59', 'test_topic', 1500)")
         connection.commit()
         yield
 
@@ -68,8 +85,6 @@ def test_db():
 
 @pytest.mark.asyncio
 async def test_find_user(init_db, test_db):
-    """проверка метода find_user"""
-
     # проверка нахождения существующего пользователя
     login = "test_login"
     password = "test_password"
@@ -85,8 +100,23 @@ async def test_find_user(init_db, test_db):
 
 
 @pytest.mark.asyncio
+async def test_get_future_events(init_db, test_db):
+    # проверка получения запланированного занятия
+    result = await test_db.get_future_events(1)
+    assert len(result) == 1
+    assert result[0]["name"] == "test_name2"
+
+
+@pytest.mark.asyncio
+async def test_get_homework(init_db, test_db):
+    result = await test_db.get_homework(1)
+    # проверка игнорирование дз с прошедшим дедлайном
+    assert len(result) == 1
+    assert result[0]["reference"] == "test_reference"
+
+
+@pytest.mark.asyncio
 async def test_get_name(init_db, test_db):
-    '''проверка метода get_name'''
     # проверка существующего пользователя
     user_id = 1
     result = await test_db.get_name(user_id)
@@ -101,7 +131,6 @@ async def test_get_name(init_db, test_db):
 
 @pytest.mark.asyncio
 async def test_check_ref_hw(init_db, test_db):
-    '''Проверка метода check_ref_hw'''
     # проверка существующей ссылки на дз
     user_id = 1
     result = await test_db.check_ref_hw(user_id, "test_reference")
@@ -114,7 +143,6 @@ async def test_check_ref_hw(init_db, test_db):
 
 @pytest.mark.asyncio
 async def test_set_status_done(init_db, test_db):
-    '''проверка метода set_status_done'''
     await test_db.set_status_done(1, "test_reference")
     connection = psycopg2.connect(**TEST_DB_CONFIG)
     cursor = connection.cursor()
@@ -125,3 +153,40 @@ async def test_set_status_done(init_db, test_db):
     finally:
         cursor.close()
         connection.close()
+
+
+@pytest.mark.asyncio
+async def test_get_user_id(init_db, test_db):
+    # нахождение существующего пользователя
+    result = await test_db.get_user_id("test_name")
+    assert result == 1
+
+    # пользователя не существует
+    result = await test_db.get_user_id("wrong_name")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_future_lessons_for_teacher(init_db, test_db):
+    result = await test_db.get_future_lessons_for_teacher(2)
+    assert len(result) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_stat_lessons(init_db, test_db):
+    start = datetime.datetime(year=2024, month=12, day=1)
+    finish = datetime.datetime(year=2025, month=12, day=1)
+    result = await test_db.get_stat_lesson(2, start, finish)
+    assert dict(result) == {"total_price":1500, "unique_students":1, "total_lessons":1}
+
+    finish = datetime.datetime(year=2024, month=12, day=2)
+    result = await test_db.get_stat_lesson(2, start, finish)
+    assert dict(result) == {"total_price": None, "unique_students": 0, "total_lessons": 0}
+
+
+@pytest.mark.asyncio
+async def test_get_stat_student(init_db, test_db):
+    start = datetime.datetime(year=2024, month=12, day=1)
+    finish = datetime.datetime(year=2025, month=12, day=1)
+    result = await test_db.get_stat_student(1, start, finish)
+    assert dict(result[0]) =={"status":"deadline, not done", "count": 1}

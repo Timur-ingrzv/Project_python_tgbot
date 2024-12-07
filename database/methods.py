@@ -76,7 +76,7 @@ class MethodsForStudent:
                     self.hw.deadline,
                     self.hw.status,
                 )
-                .where(self.hw.status != "Deadline")
+                .where(self.hw.status.not_like("%deadline%"))
                 .where(self.hw.student_id == user_id)
             )
             res = await connection.fetch(str(query))
@@ -110,7 +110,7 @@ class MethodsForStudent:
                 .select(self.hw.hw_id)
                 .where(self.hw.reference == ref)
                 .where(self.hw.student_id == user_id)
-                .where(self.hw.status != "deadline")
+                .where(self.hw.status.not_like("%deadline%"))
             )
             res = await connection.fetch(str(query))
             return bool(res)
