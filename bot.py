@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -34,7 +35,7 @@ async def main():
         handlers_for_unauthorized_user.router,
         handlers_statistic_for_teacher.router,
     )
-
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
@@ -45,8 +46,8 @@ async def cmd_start(message: Message, bot: Bot, prev_user_id=None):
         try:
             notifications[prev_user_id].cancel()
             del notifications[prev_user_id]
-        finally:
-            pass
+        except Exception as e:
+            logging.error(e)
 
     await bot.send_message(
         chat_id=message.chat.id,
