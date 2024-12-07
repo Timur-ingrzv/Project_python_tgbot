@@ -6,9 +6,11 @@ from typing import List, Dict
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
+from aiogram.filters.command import Command
 
 from utils.scheduler import scheduler_set_deadline
 from utils.states import ChangeUser, UserStatus, StatusHw, ChangeLesson
+from keyboards.keyboards_for_teacher import get_interface_for_teacher
 from database.methods import db
 
 router = Router()
@@ -342,3 +344,11 @@ async def show_hw_for_teacher(message: types.Message, state: FSMContext):
             )
     else:
         await message.answer(f"У ученика нет дз на данном промежутке")
+
+
+@router.message(Command("help"), StateFilter(UserStatus.teacher))
+async def helper(message: types.Message):
+    await message.answer(
+        "Доступные опции для учителя:",
+        reply_markup=get_interface_for_teacher(),
+    )

@@ -131,3 +131,10 @@ async def show_stat_student(message: types.Message, state: FSMContext):
         statistic = "Ни одно дз не стоит на эти даты"
 
     await message.answer(statistic)
+
+
+@router.message()
+async def unknown_message(message: types.Message):
+    await message.answer(
+        "Я не понимаю, напишите /help и(или) используйте кнопки"
+    )

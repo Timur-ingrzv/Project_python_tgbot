@@ -2,8 +2,10 @@ import aiohttp
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
+from aiogram.filters import Command
 
 from database.methods import db
+from keyboards.keyboards_for_student import get_interface_for_student
 from utils.states import SendingHw, UserStatus
 from utils.func_for_files import upload_to_yandex_disk
 
@@ -121,3 +123,11 @@ async def send_hw(message: types.Message, state: FSMContext):
         await message.answer(
             "Неправильный формат файла или неправильная ссылка"
         )
+
+
+@router.message(Command("help"), StateFilter(UserStatus.student))
+async def helper_student(message: types.Message):
+    await message.answer(
+        "Доступные опции для ученика:",
+        reply_markup=get_interface_for_student(),
+    )

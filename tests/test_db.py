@@ -23,48 +23,63 @@ def init_db():
     cursor = connection.cursor()
     try:
         # создание таблиц
-        cursor.execute("CREATE TABLE IF NOT EXISTS users ( "
-                       "user_id SERIAL PRIMARY KEY, "
-                       "login TEXT, "
-                       "password TEXT, "
-                       "name TEXT, "
-                       "status TEXT )")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS users ( "
+            "user_id SERIAL PRIMARY KEY, "
+            "login TEXT, "
+            "password TEXT, "
+            "name TEXT, "
+            "status TEXT )"
+        )
 
-        cursor.execute("CREATE TABLE IF NOT EXISTS homework ( "
-                       "hw_id SERIAL PRIMARY KEY, "
-                       "topic TEXT, "
-                       "student_id INTEGER, "
-                       "reference TEXT, "
-                       "deadline TIMESTAMP, "
-                       "status TEXT)")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS homework ( "
+            "hw_id SERIAL PRIMARY KEY, "
+            "topic TEXT, "
+            "student_id INTEGER, "
+            "reference TEXT, "
+            "deadline TIMESTAMP, "
+            "status TEXT)"
+        )
 
-        cursor.execute("CREATE TABLE IF NOT EXISTS schedule ( "
-                       "schedule_id SERIAL PRIMARY KEY, "
-                       "student_id INTEGER, "
-                       "teacher_id INTEGER, "
-                       "date TIMESTAMP, "
-                       "topic TEXT, "
-                       "price INTEGER)")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS schedule ( "
+            "schedule_id SERIAL PRIMARY KEY, "
+            "student_id INTEGER, "
+            "teacher_id INTEGER, "
+            "date TIMESTAMP, "
+            "topic TEXT, "
+            "price INTEGER)"
+        )
 
         # добавление данных в бд для тестов
         user_id = 1
-        cursor.execute("INSERT INTO users (user_id, name, login, password, status) "
-                       f"VALUES (1, 'test_name', 'test_login', 'test_password', 'student')")
+        cursor.execute(
+            "INSERT INTO users (user_id, name, login, password, status) "
+            f"VALUES (1, 'test_name', 'test_login', 'test_password', 'student')"
+        )
 
-        cursor.execute("INSERT INTO users (user_id, name, login, password, status) "
-                       f"VALUES (2, 'test_name2', 'test_login2', 'test_passwor2', 'teacher')")
+        cursor.execute(
+            "INSERT INTO users (user_id, name, login, password, status) "
+            f"VALUES (2, 'test_name2', 'test_login2', 'test_passwor2', 'teacher')"
+        )
 
-        cursor.execute("INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
-                       f"VALUES (1, 'test_topic', {user_id}, 'test_reference', '2024-12-31 23:59', 'not done')")
+        cursor.execute(
+            "INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
+            f"VALUES (1, 'test_topic', {user_id}, 'test_reference', '2024-12-31 23:59', 'not done')"
+        )
 
-        cursor.execute("INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
-                       f"VALUES (2, 'test_topic2', {user_id}, 'test_reference2', '2024-12-31 23:59', 'deadline, not done')")
+        cursor.execute(
+            "INSERT INTO homework (hw_id, topic, student_id, reference, deadline, status) "
+            f"VALUES (2, 'test_topic2', {user_id}, 'test_reference2', '2024-12-31 23:59', 'deadline, not done')"
+        )
 
-        cursor.execute("INSERT INTO schedule (schedule_id, student_id, teacher_id, date, topic, price) "
-                       "VALUES (1, 1, 2, '2024-12-31 23:59', 'test_topic', 1500)")
+        cursor.execute(
+            "INSERT INTO schedule (schedule_id, student_id, teacher_id, date, topic, price) "
+            "VALUES (1, 1, 2, '2024-12-31 23:59', 'test_topic', 1500)"
+        )
         connection.commit()
         yield
-
 
         # Очистка базы данных после завершения всех тестов
 
@@ -177,11 +192,19 @@ async def test_get_stat_lessons(init_db, test_db):
     start = datetime.datetime(year=2024, month=12, day=1)
     finish = datetime.datetime(year=2025, month=12, day=1)
     result = await test_db.get_stat_lesson(2, start, finish)
-    assert dict(result) == {"total_price":1500, "unique_students":1, "total_lessons":1}
+    assert dict(result) == {
+        "total_price": 1500,
+        "unique_students": 1,
+        "total_lessons": 1,
+    }
 
     finish = datetime.datetime(year=2024, month=12, day=2)
     result = await test_db.get_stat_lesson(2, start, finish)
-    assert dict(result) == {"total_price": None, "unique_students": 0, "total_lessons": 0}
+    assert dict(result) == {
+        "total_price": None,
+        "unique_students": 0,
+        "total_lessons": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -189,4 +212,4 @@ async def test_get_stat_student(init_db, test_db):
     start = datetime.datetime(year=2024, month=12, day=1)
     finish = datetime.datetime(year=2025, month=12, day=1)
     result = await test_db.get_stat_student(1, start, finish)
-    assert dict(result[0]) =={"status":"deadline, not done", "count": 1}
+    assert dict(result[0]) == {"status": "deadline, not done", "count": 1}
