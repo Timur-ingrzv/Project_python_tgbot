@@ -30,7 +30,7 @@ def check_valid_data(data: List, length: int) -> str:
 def get_valid_date(date) -> Dict:
     info = {}
     try:
-        valid_date = datetime.strptime(date, "%d-%m-%Y %H:%M")
+        valid_date = datetime.strptime(date.strip(), "%d-%m-%Y %H:%M")
     except Exception:
         info["error"] = "Неправильный формат даты"
         return info
@@ -314,8 +314,8 @@ async def show_hw_for_teacher(message: types.Message, state: FSMContext):
         return
 
     try:
-        valid_date_start = datetime.strptime(data[1], "%d-%m-%Y %H:%M")
-        valid_date_finish = datetime.strptime(data[2], "%d-%m-%Y %H:%M")
+        valid_date_start = datetime.strptime(data[1].strip(), "%d-%m-%Y %H:%M")
+        valid_date_finish = datetime.strptime(data[2].strip(), "%d-%m-%Y %H:%M")
     except Exception:
         await message.answer("Неправильный формат даты")
         return

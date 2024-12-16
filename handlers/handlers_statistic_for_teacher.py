@@ -45,8 +45,8 @@ async def show_stat_lesson(message: types.Message, state: FSMContext):
         return
 
     try:
-        valid_date_start = datetime.strptime(data[0], "%d-%m-%Y %H:%M")
-        valid_date_finish = datetime.strptime(data[1], "%d-%m-%Y %H:%M")
+        valid_date_start = datetime.strptime(data[0].strip(), "%d-%m-%Y %H:%M")
+        valid_date_finish = datetime.strptime(data[1].strip(), "%d-%m-%Y %H:%M")
     except Exception:
         await message.answer("Неправильный формат даты")
         return
@@ -95,8 +95,8 @@ async def show_stat_student(message: types.Message, state: FSMContext):
         return
 
     try:
-        valid_date_start = datetime.strptime(data[1], "%d-%m-%Y %H:%M")
-        valid_date_finish = datetime.strptime(data[2], "%d-%m-%Y %H:%M")
+        valid_date_start = datetime.strptime(data[1].strip(), "%d-%m-%Y %H:%M")
+        valid_date_finish = datetime.strptime(data[2].strip(), "%d-%m-%Y %H:%M")
     except Exception:
         await message.answer("Неправильный формат даты")
         return
