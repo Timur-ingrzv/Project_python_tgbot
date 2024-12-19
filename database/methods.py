@@ -1,11 +1,10 @@
-import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 import logging
 
 import asyncpg
 from pypika import Table, Query, Order, functions as fn
-from config import DATABASE_CONFIG
+from config import DATABASE_CONFIG, hasher
 
 
 class MethodsForStudent:
@@ -21,25 +20,21 @@ class MethodsForStudent:
             # Создание запроса с использованием Pypika
             query = (
                 Query.from_(self.users)
-                .select(self.users.user_id, self.users.name, self.users.status)
-                .where(
-                    (self.users.login == login)
-                    & (self.users.password == password)
-                )
+                .select(self.users.user_id, self.users.name, self.users.password, self.users.status)
+                .where(self.users.login == login)
             )
 
-            # Получение одной строки
-            res = await connection.fetchrow(str(query))
-
+            # Получение результата
+            res = await connection.fetch(str(query))
             # Возврат результата
-            if not res:
-                return {"status": "User not found"}
-            else:
-                return {
-                    "user_id": res["user_id"],
-                    "name": res["name"],
-                    "status": res["status"],
-                }
+            password = password.encode('utf-8')
+            for user in res:
+                uhashed_password = hasher.decrypt(user["password"])
+                if password == uhashed_password:
+                    return user
+
+            # Пользователь не найден
+            return {"status": "User not found"}
         finally:
             # Закрытие соединения
             await connection.close()
@@ -202,6 +197,7 @@ class MethodsForTeacher:
                 return "Пользователь с таким именем или с парой логин-пароль существует"
 
             # добавление ученика
+            hashed_password = str(hasher.encrypt(info["password"].encode("utf-8")))
             query = (
                 Query.into(self.users)
                 .columns(
@@ -213,7 +209,7 @@ class MethodsForTeacher:
                 .insert(
                     info["name"],
                     info["login"],
-                    info["password"],
+                    hashed_password.strip("b'"),
                     info["status"],
                 )
             )

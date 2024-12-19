@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from datetime import datetime
 from typing import List, Dict
 
@@ -66,6 +67,12 @@ async def add_user(message: types.Message, state: FSMContext):
     checker_res = check_valid_data(data, 4)
     if checker_res != "ok":
         await message.answer(checker_res)
+        return
+
+    pattern = r'^[A-Za-z0-9.,:;!?\'"()\-_ ]+$'
+    if not bool(re.match(pattern, data[2])):
+        await message.answer("Пароль должен содержать только латинские буквы,"
+                             " цифры и знаки препинания")
         return
 
     if not ("учитель" in data[3].lower() or "ученик" in data[3].lower()):
